@@ -26,3 +26,8 @@ mknod /dev/${device} c $major 0
 mode="a+rw"
 
 chmod $mode /dev/${device}
+
+echo done
+
+# print last entry about module from systemd journal
+journalctl -xe | grep $module | tail -1

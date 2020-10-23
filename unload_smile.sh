@@ -16,3 +16,8 @@ rmmod $module
 
 # remove fs device node 
 rm -f /dev/${device}
+
+echo done
+
+# print last entry about module from systemd journal
+journalctl -xe | grep $module | tail -1

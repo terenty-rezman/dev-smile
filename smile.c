@@ -48,7 +48,7 @@ struct file_operations smile_fops = {
     .release = smile_release,
 };
 
-const char smile_symbol[] = "\xE2\x98\xA0";
+const char smile_symbol[] = "\xF0\x9F\x98\x9D";
 char* symbol_buffer = NULL;
 
 int init_symbol_buffer(void)
