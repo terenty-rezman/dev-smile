@@ -1,6 +1,7 @@
 /*                                                     
- * $Id: hello.c,v 1.5 2004/10/26 03:32:21 corbet Exp $ 
- */
+   smile device driver
+*/
+
 #include <linux/init.h>
 #include <linux/module.h>
 
@@ -23,7 +24,7 @@ int smile_minor = 0;
 static void smile_cleanup(void);
 
 /* my struct representing the device */
-/* coud be statically allocated */
+/* TODO: should be statically allocated ! */
 struct smile_dev
 {
     int initialized_ok; /* if device was succefully created */
@@ -101,7 +102,7 @@ static int smile_init(void)
     }
     memset(smile_device, 0, sizeof(struct smile_dev));
 
-    /* initizlize the device */
+    /* initialize the device */
     cdev_init(&smile_device->cdev, &smile_fops);
     smile_device->cdev.owner = THIS_MODULE;
 
