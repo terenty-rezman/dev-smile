@@ -24,12 +24,11 @@ int smile_minor = 0;
 static void smile_cleanup(void);
 
 /* my struct representing the device */
-/* TODO: should be statically allocated ! */
 struct smile_dev
 {
     int initialized_ok; /* if device was succefully created */
     struct cdev cdev;   /* kernel char device structure */
-}* smile_device = NULL; /* allocated in smile_init */
+} smile_device; /* zero initialized by default */
 
 /* supported device operations */
 ssize_t smile_read(struct file* filp, char __user* buf, size_t count, loff_t* f_pos);
@@ -49,14 +48,19 @@ struct file_operations smile_fops = {
     .release = smile_release,
 };
 
+/* smile symbol read from the device */
 const char smile_symbol[] = "\xF0\x9F\x98\x9D";
-char* symbol_buffer = NULL;
+const int smile_symbol_size = sizeof(smile_symbol) / sizeof(smile_symbol[0]);
 
+/* put smiles in a buffer to allow reading more than one smile at a time */
+char* symbol_buffer = NULL;
+const int symbols_in_buffer = 2;
+const int symbol_buff_size = symbols_in_buffer * smile_symbol_size;
+
+/* put smile symbols in continious buffer to speed up read() operation */
 int init_symbol_buffer(void)
 {
     int i = 0;
-    const int smile_symbol_size = sizeof(smile_symbol) / sizeof(smile_symbol[0]);
-    const int symbol_buff_size = 2 * smile_symbol_size;
 
     symbol_buffer = kmalloc(symbol_buff_size, GFP_KERNEL);
 
@@ -93,20 +97,11 @@ static int smile_init(void)
         return err; /* fail */
     }
 
-    smile_device = kmalloc(sizeof(struct smile_dev), GFP_KERNEL);
-    if (!smile_device)
-    {
-        printk(KERN_ALERT "smile: cannot allocate memory for struct smile_device\n");
-        err = -ENOMEM;
-        goto fail;
-    }
-    memset(smile_device, 0, sizeof(struct smile_dev));
-
     /* initialize the device */
-    cdev_init(&smile_device->cdev, &smile_fops);
-    smile_device->cdev.owner = THIS_MODULE;
+    cdev_init(&smile_device.cdev, &smile_fops);
+    smile_device.cdev.owner = THIS_MODULE;
 
-    err = cdev_add(&smile_device->cdev, dev_numbers, 1);
+    err = cdev_add(&smile_device.cdev, dev_numbers, 1);
 
     if (err)
     {
@@ -114,7 +109,7 @@ static int smile_init(void)
         goto fail;
     }
 
-    smile_device->initialized_ok = 1;
+    smile_device.initialized_ok = 1;
 
     smile_major = MAJOR(dev_numbers);
     printk(KERN_NOTICE "smile: device %d initialized\n", smile_major);
@@ -134,13 +129,8 @@ static void smile_cleanup(void)
 {
     dev_t dev = MKDEV(smile_major, smile_minor);
 
-    if (smile_device)
-        if (smile_device->initialized_ok)
-            cdev_del(&smile_device->cdev); /* unregister the device */
-
-    /* free dynamic memory if any allocated */
-    if (smile_device)
-        kfree(smile_device);
+    if (smile_device.initialized_ok)
+        cdev_del(&smile_device.cdev); /* unregister the device */
 
     if (symbol_buffer)
         kfree(symbol_buffer);
@@ -151,12 +141,12 @@ static void smile_cleanup(void)
     printk(KERN_NOTICE "smile: device %d unloaded\n", smile_major);
 }
 
+/* read from symbol buffer to allow reading more than one smile at a time */
 ssize_t smile_read(struct file* filp, char __user* buf, size_t count, loff_t* f_pos)
 {
-    const int smile_symbol_size = sizeof(smile_symbol) / sizeof(smile_symbol[0]);
-
-    int read_pos = *f_pos % smile_symbol_size;
-    int read_count = count > smile_symbol_size ? smile_symbol_size : count;
+    int read_pos = *f_pos % symbol_buff_size;
+    int available_count = symbol_buff_size - read_pos;
+    int read_count = count > available_count ? available_count : count;
 
     copy_to_user(buf, symbol_buffer + read_pos, read_count);
 
