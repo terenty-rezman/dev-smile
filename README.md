@@ -1,6 +1,8 @@
 # linux smile device
 linux kernel module for char device with similar to __/dev/zero__ functionality, but instead of nulls generates __smiles__ ^^
 
+![image](https://user-images.githubusercontent.com/58115884/129884654-2407fdf4-e3a1-4a1a-babf-9536286e9ca0.png)
+
 # build
 run
 ```
